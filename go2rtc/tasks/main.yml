@@ -1,0 +1,63 @@
+---
+
+- name: Ensure group {{ go2rtc_group }} exists
+  ansible.builtin.group:
+    name: "{{ go2rtc_group }}"
+    state: present
+
+- name: Add the {{ go2rtc_user }} user
+  ansible.builtin.user:
+    name: "{{ go2rtc_user }}"
+    group: "{{ go2rtc_group }}"
+    groups: video
+
+- name: Creates directory
+  file:
+    path: "{{ go2rtc_dir }}"
+    state: directory
+    owner: "{{ go2rtc_user }}"
+    group: "{{ go2rtc_group }}"
+    mode: 0775
+
+- name: Download go2rtc binary from GitHub
+  ansible.builtin.get_url:
+    url: https://github.com/AlexxIT/go2rtc/releases/download/{{ go2rtc_version }}/go2rtc_linux_{{ go2rtc_arch }}
+    dest: "{{ go2rtc_dir }}/go2rtc"
+    mode: "0555"
+    owner: "{{ go2rtc_user }}"
+    group: "{{ go2rtc_group }}"
+  register: go2rtc_binary
+
+- name: Template go2rtc config file
+  ansible.builtin.template:
+    src: templates/go2rtc.yaml.j2
+    dest: "{{ go2rtc_settings_file }}"
+    owner: "{{ go2rtc_user }}"
+    group: "{{ go2rtc_group }}"
+    mode: "0664"
+  register: template
+
+- name: Template systemd unit file
+  ansible.builtin.template:
+    src: templates/go2rtc.service.j2
+    dest: /etc/systemd/system/go2rtc.service
+    owner: root
+    group: root
+    mode: "0664"
+
+- name: Reload systemd daemon
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Enable and start go2rtc service
+  ansible.builtin.systemd:
+    name: go2rtc
+    enabled: true
+    state: started
+
+- name: Restart go2rtc service if config changed
+  ansible.builtin.systemd:
+    name: go2rtc
+    enabled: true
+    state: restarted
+  when: (template.changed) or (go2rtc_binary.changed)

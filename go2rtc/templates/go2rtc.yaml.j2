@@ -1,0 +1,14 @@
+streams:
+  usb_video_{{ camera_id }}_mjpeg: ffmpeg:device?video=/dev/video{{ camera_id }}&input_format=mjpeg&video_size={{ video_width }}x{{ video_height }}
+
+log:
+  level: {{ log_global_level }}
+
+webrtc:
+  listen: ":{{ webrtc_port }}"
+
+api:
+  listen: "{{ api_listen_address }}"
+
+rtsp:
+  listen: "{{ rtsp_listen_address }}"
